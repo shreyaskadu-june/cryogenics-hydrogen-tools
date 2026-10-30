@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquid Hydrogen Line Cooldown</title>
+<style>
+  :root { --bg:#0b1316; --panel:#132126; --line:#22393f; --ink:#e4f6f6; --muted:#8fb4b7; --accent:#5fd6d0; --accent2:#f4d27a; --warn:#ff8f7a; color-scheme: dark; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg:#f1f8f8; --panel:#fff; --line:#c8dfe0; --ink:#0c2326; --muted:#4c6b6e; --accent:#0d7f79; --accent2:#8a6400; --warn:#b3412c; color-scheme: light; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px 16px 48px; }
+  .tag { font:600 12px/1 ui-monospace,Menlo,monospace; color:var(--accent); text-transform:uppercase; letter-spacing:.12em; }
+  h1 { font-size:26px; margin:6px 0; }
+  .lede { color:var(--muted); max-width:72ch; margin:0 0 16px; }
+  .grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+  @media (min-width:860px){ .grid{ grid-template-columns:minmax(0,340px) minmax(0,1fr);} }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; min-width:0; }
+  .card h2 { font-size:13px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .ctrl { margin:12px 0; }
+  .ctrl label { display:flex; justify-content:space-between; font-size:14px; }
+  .ctrl output { font:500 14px ui-monospace,Menlo,monospace; color:var(--accent); }
+  input[type=range] { width:100%; accent-color:var(--accent); cursor:pointer; }
+  .src { font-size:12px; color:var(--muted); margin:2px 0 0; }
+  .src.ph { color:var(--accent2); }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+  .kpi { border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .kpi b { display:block; font:600 22px ui-monospace,Menlo,monospace; color:var(--accent); }
+  .kpi span { font-size:12px; color:var(--muted); }
+  .note { font-size:13px; color:var(--muted); }
+  .flag { color:var(--warn); font-size:13px; }
+  .bars { display:grid; gap:10px; margin:8px 0 14px; }
+  .bar-row { display:grid; grid-template-columns:minmax(0,120px) minmax(0,1fr) 90px; gap:10px; align-items:center; font-size:14px; }
+  .track { height:14px; background:var(--line); border-radius:7px; overflow:hidden; }
+  .fill { height:100%; background:var(--accent); border-radius:7px; transition:width .3s ease; }
+  .fill.ref { background:var(--accent2); }
+  .num { font:500 13px ui-monospace,Menlo,monospace; text-align:right; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); }
+  th { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  td.r { text-align:right; font-family:ui-monospace,Menlo,monospace; }
+  .table-wrap { overflow-x:auto; }
+  button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce) { .fill { transition:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">Cryogenics · liquid hydrogen · transfer line</div>
+    <h1>How much liquid hydrogen does it take to cool a transfer line?</h1>
+    <p class="lede">Set the line length and bore, the flow rate and how well the hydrogen's cold is used. The page estimates the copper that must be cooled from room temperature to 20 K (−253 °C), the liquid hydrogen used up, and the time at your flow rate.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-label="Inputs">
+      <h2>Line</h2>
+      <div class="ctrl">
+        <label for="L">Length <output id="oL"></output></label>
+        <input type="range" id="L" min="1" max="200" step="1" value="61">
+        <p class="src">61 m matches the NBS 1966 hydrogen test line.</p>
+      </div>
+      <div class="ctrl">
+        <label for="ID">Inner bore <output id="oID"></output></label>
+        <input type="range" id="ID" min="6" max="100" step="0.1" value="15.9">
+        <p class="src">15.9 mm matches the NBS test line.</p>
+      </div>
+      <div class="ctrl">
+        <label for="OD">Outer diameter <output id="oOD"></output></label>
+        <input type="range" id="OD" min="8" max="120" step="0.1" value="19">
+        <p class="src">19.0 mm matches the NBS test line. Must be larger than the bore.</p>
+      </div>
+      <h2 style="margin-top:18px">Operation</h2>
+      <div class="ctrl">
+        <label for="flow">Liquid flow rate <output id="oFlow"></output></label>
+        <input type="range" id="flow" min="1" max="200" step="1" value="20">
+        <p class="src ph">Placeholder. Depends on your transfer system. The NBS report gives no flow rate.</p>
+      </div>
+      <div class="ctrl">
+        <label for="util">Share of hydrogen's cold used <output id="oUtil"></output></label>
+        <input type="range" id="util" min="10" max="80" step="1" value="35">
+        <p class="src">Default 35%. Calibrated so that the NBS test gives its measured 30–50 L use (26–43%).</p>
+      </div>
+      <p class="note">Model: energy to cool the copper wall from 300 K to 20 K, divided by the cold each kilogram of liquid hydrogen supplies (liquid at 20 K warmed to 300 K gas) and by the share of that cold used. The supply and exhaust plena, supports and heat leak are not modelled.</p>
+    </section>
+
+    <section class="card" aria-label="Results">
+      <div class="kpis">
+        <div class="kpi"><b id="kLiq">–</b><span>Liquid hydrogen used, litres</span></div>
+        <div class="kpi"><b id="kKg">–</b><span>Liquid hydrogen used, kg</span></div>
+        <div class="kpi"><b id="kTime">–</b><span>Time at this flow rate, min</span></div>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Quantity</th><th class="r">Value</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:12px">Copper heat capacity from the NIST OFHC copper fit (hand-evaluated at 20, 50, 100, 200 and 300 K and integrated). Hydrogen enthalpy from NIST via CoolProp. Copper density 8,940 kg/m³.</p>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px" aria-label="Sources and limits">
+    <h2>Sources, method and limits</h2>
+    <ul class="note">
+      <li><b>Calibration:</b> NBS 1966 cryogenic line cooldown study (NBS 9264). A 61 m copper line, 15.9 mm bore, consumed about 30–50 L of liquid hydrogen to cool. The model gives 0.92 kg (13 L) of ideal use, so the implied useful share is 26–43%. The report gives no closed-form cooldown time for hydrogen.</li>
+      <li><b>Copper heat capacity:</b> NIST Cryogenic Materials Database, OFHC copper curve fit (4–300 K; 10% error below 15 K, 5% above).</li>
+      <li><b>Hydrogen enthalpy:</b> NIST via CoolProp. From saturated liquid at 20.4 K to gas at 300 K, 1 bar: about 3,958 kJ/kg.</li>
+      <li><b>Not modelled:</b> stainless or other pipe materials, supply and exhaust plena, vapour blow-off dynamics, two-phase flow and chill-down, insulation heat leak, and any pressure drop or temperature gradient along the line. The NBS study found pressure drop and friction to be the biggest sources of uncertainty, which this page does not model.</li>
+      <li><b>Uncertainty:</b> the NBS study recommends a safety factor of at least 1.3 on time and cryogen quantity. The model's utilisation factor is only calibrated to one test, so treat results as screening estimates.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var RHO_CU = 8940;          // kg/m³, copper
+  var RHO_LH2 = 70.85;        // kg/m³, saturated liquid at 1 bar
+  var E_CU = 78728;           // J/kg, copper enthalpy change 20 K → 300 K (integrated NIST fit)
+  var DH_H2 = 3958300;        // J/kg, liquid H2 at 20.4 K → gas at 300 K, 1 bar
+
+  function calc(Lm, IDmm, ODmm, flowGs, util) {
+    if (ODmm <= IDmm) return null;
+    var area = Math.PI / 4 * (Math.pow(ODmm / 1000, 2) - Math.pow(IDmm / 1000, 2));
+    var mCu = area * Lm * RHO_CU;                   // kg
+    var Q = mCu * E_CU;                             // J
+    var kg = Q / (DH_H2 * util);                    // kg liquid H2 used
+    var litres = kg / RHO_LH2 * 1000;
+    var secs = kg / (flowGs / 1000);
+    return { mCu: mCu, Q: Q, kg: kg, litres: litres, min: secs / 60, ideal: Q / DH_H2 };
+  }
+
+  function bar(id, label, val, max, text, cls) {
+    return '<div class="bar-row"><span>' + label + '</span><div class="track"><div class="fill ' + (cls || '') +
+      '" style="width:' + Math.min(100, val / max * 100).toFixed(1) + '%"></div></div><span class="num">' + text + '</span></div>';
+  }
+
+  function sync() {
+    var Lm = parseFloat($('L').value), ID = parseFloat($('ID').value), OD = parseFloat($('OD').value);
+    var flow = parseFloat($('flow').value), util = parseFloat($('util').value) / 100;
+    $('oL').textContent = Lm + ' m';
+    $('oID').textContent = ID.toFixed(1) + ' mm';
+    $('oOD').textContent = OD.toFixed(1) + ' mm';
+    $('oFlow').textContent = flow + ' g/s';
+    $('oUtil').textContent = Math.round(util * 100) + '%';
+
+    var r = calc(Lm, ID, OD, flow, util);
+    if (!r) {
+      $('kLiq').textContent = '–'; $('kKg').textContent = '–'; $('kTime').textContent = '–';
+      $('bars').innerHTML = ''; $('rows').innerHTML = '<tr><td colspan="2" class="flag">Outer diameter must be larger than the bore.</td></tr>';
+      return;
+    }
+    $('kLiq').textContent = r.litres.toFixed(0);
+    $('kKg').textContent = r.kg.toFixed(2);
+    $('kTime').textContent = r.min.toFixed(1);
+
+    // Bars: model against the NBS measured range (30–50 L = 2.13–3.54 kg)
+    var maxKg = 4;
+    $('bars').innerHTML =
+      bar('bars', 'This line', r.kg, maxKg, r.kg.toFixed(2) + ' kg', '') +
+      bar('bars', 'NBS 30 L', 2.13, maxKg, '2.13 kg', 'ref') +
+      bar('bars', 'NBS 50 L', 3.54, maxKg, '3.54 kg', 'ref') +
+      bar('bars', 'Ideal (100%)', r.ideal, maxKg, r.ideal.toFixed(2) + ' kg', 'ref');
+
+    $('rows').innerHTML =
+      '<tr><td>Copper in the line</td><td class="r">' + r.mCu.toFixed(1) + ' kg</td></tr>' +
+      '<tr><td>Heat to remove (300 K → 20 K)</td><td class="r">' + (r.Q / 1e6).toFixed(2) + ' MJ</td></tr>' +
+      '<tr><td>Ideal liquid hydrogen (all cold used)</td><td class="r">' + r.ideal.toFixed(2) + ' kg</td></tr>' +
+      '<tr><td>Liquid hydrogen used at this utilisation</td><td class="r">' + r.kg.toFixed(2) + ' kg</td></tr>';
+  }
+
+  ['L', 'ID', 'OD', 'flow', 'util'].forEach(function (id) { $(id).addEventListener('input', sync); });
+  sync();
+})();
+</script>
+</body>
+</html>

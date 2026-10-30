@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hydrogen Liquefaction Energy</title>
+<style>
+  :root { --bg:#100f16; --panel:#1b1a26; --line:#34324a; --ink:#f0eefc; --muted:#a9a4c7; --accent:#b49cff; --accent2:#7fe0b0; --warn:#ff9a7a; color-scheme: dark; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg:#f6f4fc; --panel:#fff; --line:#d7d1ec; --ink:#1c1530; --muted:#5e5680; --accent:#5b3fc4; --accent2:#127a52; --warn:#b3481f; color-scheme: light; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px 16px 48px; }
+  .tag { font:600 12px/1 ui-monospace,Menlo,monospace; color:var(--accent); text-transform:uppercase; letter-spacing:.12em; }
+  h1 { font-size:26px; margin:6px 0; }
+  .lede { color:var(--muted); max-width:72ch; margin:0 0 16px; }
+  .grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+  @media (min-width:860px){ .grid{ grid-template-columns:minmax(0,340px) minmax(0,1fr);} }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; min-width:0; }
+  .card h2 { font-size:13px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .ctrl { margin:12px 0; }
+  .ctrl label { display:flex; justify-content:space-between; font-size:14px; }
+  .ctrl output { font:500 14px ui-monospace,Menlo,monospace; color:var(--accent); }
+  input[type=range] { width:100%; accent-color:var(--accent); cursor:pointer; }
+  .src { font-size:12px; color:var(--muted); margin:2px 0 0; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+  .kpi { border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .kpi b { display:block; font:600 22px ui-monospace,Menlo,monospace; color:var(--accent); }
+  .kpi span { font-size:12px; color:var(--muted); }
+  .bars { display:grid; gap:10px; margin:8px 0 14px; }
+  .bar-row { display:grid; grid-template-columns:minmax(0,130px) minmax(0,1fr) 96px; gap:10px; align-items:center; font-size:14px; }
+  .track { height:14px; background:var(--line); border-radius:7px; overflow:hidden; position:relative; }
+  .fill { height:100%; background:var(--accent); border-radius:7px; transition:width .3s ease; }
+  .fill.min { background:var(--accent2); }
+  .fill.range { background:var(--warn); opacity:.75; }
+  .num { font:500 13px ui-monospace,Menlo,monospace; text-align:right; }
+  .note { font-size:13px; color:var(--muted); }
+  .flag { color:var(--warn); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); }
+  th { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  td.r { text-align:right; font-family:ui-monospace,Menlo,monospace; }
+  .table-wrap { overflow-x:auto; }
+  button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce) { .fill { transition:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">Cryogenics · liquid hydrogen · liquefaction</div>
+    <h1>How much energy does it take to liquefy hydrogen?</h1>
+    <p class="lede">Set a plant's output and how close it runs to the theoretical minimum. The page shows the energy per kilogram, the daily and yearly electricity use, and how the result compares with the minimum and with today's large industrial liquefiers.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-label="Inputs">
+      <h2>Plant</h2>
+      <div class="ctrl">
+        <label for="cap">Liquid hydrogen output <output id="oCap"></output></label>
+        <input type="range" id="cap" min="6000" max="200000" step="500" value="27000">
+        <p class="src">Range follows the DOE model (6,000 to 200,000 kg/day). The 27,000 kg/day default is an example, not a recommendation.</p>
+      </div>
+      <div class="ctrl">
+        <label for="eff">Share of the theoretical minimum achieved <output id="oEff"></output></label>
+        <input type="range" id="eff" min="10" max="100" step="0.1" value="19.2">
+        <p class="src">Default 19% gives 15 kWh/kg, the middle of DOE's 10–20 kWh/kg range for today's large liquefiers.</p>
+      </div>
+      <p class="note">Model: energy per kilogram = theoretical minimum ÷ share achieved. Daily and yearly energy follow from output. Plant size is not used to change the efficiency, because the DOE source gives no values for that effect.</p>
+    </section>
+
+    <section class="card" aria-label="Results">
+      <div class="kpis">
+        <div class="kpi"><b id="kKwh">–</b><span>Energy, kWh per kg</span></div>
+        <div class="kpi"><b id="kDay">–</b><span>Electricity, MWh per day</span></div>
+        <div class="kpi"><b id="kYr">–</b><span>Electricity, GWh per year</span></div>
+      </div>
+      <div class="bars" id="bars"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Case</th><th class="r">kWh per kg</th><th class="r">Share of minimum</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:12px">Figures are for electricity into the liquefier. The DOE source does not give plant-scale, year-specific efficiencies, so the range bar is a sourced range for today's large liquefiers, not a forecast.</p>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px" aria-label="Sources and limits">
+    <h2>Sources, method and limits</h2>
+    <ul class="note">
+      <li><b>Theoretical minimum:</b> 2.88 kWh/kg, a reversible Carnot process from a 20 bar inlet, from HDSAM v3.1 as cited in DOE Hydrogen Program document 19001 (hydrogen liquefaction costs). The document gives no date for this value.</li>
+      <li><b>Industrial range:</b> "in the range of 10–20 kWh/kg" for today's large-scale industrial liquefiers, DOE document 19001. The document gives no plant capacity or year for this range.</li>
+      <li><b>Plant output range:</b> DOE document 19001 models plant sizes from 6,000 to 200,000 kg/day.</li>
+      <li><b>Not modelled:</b> plant size effects on efficiency (the source describes a decrease with scale but gives no values), ortho-para conversion energy, refrigerant cycle choice (Claude, Brayton, mixed refrigerant), boil-off during storage, and liquefier capital cost.</li>
+      <li><b>Uncertainty:</b> the 10–20 kWh/kg range is wide, and the document gives no year or plant basis for it. Treat outputs as screening estimates, and check the figure against a current source before use.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var MIN_KWH = 2.88;           // kWh/kg, theoretical minimum (HDSAM, DOE 19001)
+  var IND_LO = 10, IND_HI = 20; // kWh/kg, today's large industrial liquefiers (DOE 19001)
+
+  function fmtInt(n) { return Math.round(n).toLocaleString('en-GB'); }
+
+  function sync() {
+    var cap = parseFloat($('cap').value), share = parseFloat($('eff').value) / 100;
+    var kwh = MIN_KWH / share;
+    var mwhDay = kwh * cap / 1000;
+    var gwhYr = mwhDay * 365 / 1000;
+    $('oCap').textContent = fmtInt(cap) + ' kg/day';
+    $('oEff').textContent = Math.round(share * 100) + '%';
+    $('kKwh').textContent = kwh.toFixed(1);
+    $('kDay').textContent = fmtInt(mwhDay);
+    $('kYr').textContent = gwhYr.toFixed(1);
+
+    var max = 25; // kWh/kg axis
+    var pct = function (v) { return Math.min(100, v / max * 100).toFixed(1); };
+    $('bars').innerHTML =
+      '<div class="bar-row"><span>Theoretical minimum</span><div class="track"><div class="fill min" style="width:' + pct(MIN_KWH) + '%"></div></div><span class="num">' + MIN_KWH.toFixed(2) + '</span></div>' +
+      '<div class="bar-row"><span>Industrial range</span><div class="track"><div class="fill range" style="margin-left:' + pct(IND_LO) + '%;width:' + (pct(IND_HI) - pct(IND_LO)) + '%"></div></div><span class="num">10–20</span></div>' +
+      '<div class="bar-row"><span>This plant</span><div class="track"><div class="fill" style="width:' + pct(kwh) + '%"></div></div><span class="num">' + kwh.toFixed(1) + '</span></div>';
+
+    $('rows').innerHTML =
+      '<tr><td>Theoretical minimum (HDSAM)</td><td class="r">' + MIN_KWH.toFixed(2) + '</td><td class="r">100%</td></tr>' +
+      '<tr><td>Industrial range, low end</td><td class="r">10.0</td><td class="r">' + (MIN_KWH / 10 * 100).toFixed(0) + '%</td></tr>' +
+      '<tr><td>Industrial range, high end</td><td class="r">20.0</td><td class="r">' + (MIN_KWH / 20 * 100).toFixed(0) + '%</td></tr>' +
+      '<tr><td>This plant</td><td class="r">' + kwh.toFixed(1) + '</td><td class="r">' + Math.round(share * 100) + '%</td></tr>';
+  }
+
+  ['cap', 'eff'].forEach(function (id) { $(id).addEventListener('input', sync); });
+  sync();
+})();
+</script>
+</body>
+</html>
