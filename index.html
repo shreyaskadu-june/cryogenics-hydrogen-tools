@@ -34,8 +34,8 @@
   .phase { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--line); font-size:13px; margin-bottom:8px; }
   svg { width:100%; height:auto; display:block; }
   .axis { stroke:var(--line); stroke-width:1; }
-  .tick { fill:var(--muted); font:11px ui-monospace,Menlo,monospace; }
-  .lab { fill:var(--muted); font:12px system-ui,sans-serif; }
+  .tick { fill:var(--muted); font:15px ui-monospace,Menlo,monospace; }
+  .lab { fill:var(--muted); font:16px system-ui,sans-serif; }
   .curve { fill:none; stroke-width:2.2; }
   .c-rho { stroke:var(--accent); }
   .c-h { stroke:var(--accent2); }
@@ -141,7 +141,7 @@ var DATA = {"source": "NIST Standard Reference Database 12 via CoolProp 8.0.0", 
     var svg = $(svgId), W = 640, H = 220, L = 58, R = 16, Tp = 14, B = 32;
     var ymin = Infinity, ymax = -Infinity;
     ys.forEach(function (v) { if (v != null) { if (v < ymin) ymin = v; if (v > ymax) ymax = v; } });
-    var span = ymax - ymin || 1; ymin -= span * 0.05; ymax += span * 0.05;
+    var span = ymax - ymin || 1; var lo = ymin >= 0 ? Math.max(0, ymin - span * 0.05) : ymin - span * 0.05; ymin = lo; ymax += span * 0.05;
     var x = function (t) { return L + (t - T[0]) / (T[T.length - 1] - T[0]) * (W - L - R); };
     var y = function (v) { return Tp + (1 - (v - ymin) / (ymax - ymin)) * (H - Tp - B); };
     var s = '';
@@ -170,7 +170,7 @@ var DATA = {"source": "NIST Standard Reference Database 12 via CoolProp 8.0.0", 
     var ts = DATA.Tsat_K[String(state.p)];
     if (ts !== undefined) {
       s += '<line x1="' + x(ts) + '" y1="' + Tp + '" x2="' + x(ts) + '" y2="' + (H - B) + '" stroke="var(--muted)" stroke-dasharray="2 4"/>';
-      s += '<text class="tick" x="' + (x(ts) + 4) + '" y="' + (Tp + 12) + '">Tsat ' + ts.toFixed(1) + ' K</text>';
+      s += '<text class="tick" x="' + (x(ts) + 4) + '" y="' + (Tp + 14) + '">Tsat ' + ts.toFixed(1) + ' K</text>';
     }
     svg.innerHTML = s;
   }
@@ -194,7 +194,7 @@ var DATA = {"source": "NIST Standard Reference Database 12 via CoolProp 8.0.0", 
 
   // table of densities at selected temperatures for current pressure
   function table() {
-    var temps = [14, 16, 18, 20, 20.3, 22, 25, 30, 33, 40, 50, 70, 100];
+    var temps = [14, 16, 18, 20, 20.5, 22, 25, 30, 33, 40, 50, 70, 100];
     var h = '<tr><th>T (K)</th>' + P_LIST.map(function (p) { return '<th class="r">' + p + ' bar</th>'; }).join('') + '</tr>';
     temps.forEach(function (t) {
       var j = idx(t);
