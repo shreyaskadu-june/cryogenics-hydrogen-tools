@@ -89,6 +89,11 @@
         <p class="src ph">Placeholder. Depends on your transfer system. The NBS report gives no flow rate.</p>
       </div>
       <div class="ctrl">
+        <label for="drv">Driving pressure <output id="oDrv"></output></label>
+        <input type="range" id="drv" min="2.5" max="11.1" step="0.1" value="4.2">
+        <p class="src">Pressure pushing liquid into the line. Used only for the NBS 9264 reference time below.</p>
+      </div>
+      <div class="ctrl">
         <label for="util">Share of hydrogen's cold used <output id="oUtil"></output></label>
         <input type="range" id="util" min="10" max="80" step="1" value="35">
         <p class="src">Default 35%. Calibrated so that the NBS test gives its measured 30–50 L use (26–43%).</p>
@@ -101,6 +106,7 @@
         <div class="kpi"><b id="kLiq">–</b><span>Liquid hydrogen used, litres</span></div>
         <div class="kpi"><b id="kKg">–</b><span>Liquid hydrogen used, kg</span></div>
         <div class="kpi"><b id="kTime">–</b><span>Time at this flow rate, min</span></div>
+        <div class="kpi"><b id="kNBS">–</b><span>NBS 9264 cooldown time, s (61 m test line only)</span></div>
       </div>
       <div class="bars" id="bars"></div>
       <div class="table-wrap">
@@ -116,7 +122,8 @@
   <section class="card" style="margin-top:16px" aria-label="Sources and limits">
     <h2>Sources, method and limits</h2>
     <ul class="note">
-      <li><b>Calibration:</b> NBS 1966 cryogenic line cooldown study (NBS 9264). A 61 m copper line, 15.9 mm bore, consumed about 30–50 L of liquid hydrogen to cool. The model gives 0.92 kg (13 L) of ideal use, so the implied useful share is 26–43%. The report gives no closed-form cooldown time for hydrogen.</li>
+      <li><b>Cooldown time (NBS 9264):</b> Brennan, Brentari, Smith and Steward, "An Experimental Report on Cooldown of Cryogenic Transfer Lines", NBS Report 9264 (NASA, 1967). Cooldown time is the low-temperature knee at 60.4 m from the supply dewar. Figure 8 gives hydrogen cooldown time against driving pressure for the 61 m, 15.9 mm bore copper line. Values were read from the figure and are approximate (about ±5 s). Times run from about 145 s at 2.5 atm to about 33 s at 11.1 atm.</li>
+      <li><b>Calibration:</b> the utilisation factor is calibrated to the 30–50 L consumption quoted for this line in secondary literature (the SINDA/FLUINT paper). The NBS 9264 text does not give a liquid volume, and the flow figure that might give it was not read, so this is not verified against the primary report. The model gives 0.92 kg (13 L) of ideal use, so the implied useful share is 26–43%.</li>
       <li><b>Copper heat capacity:</b> NIST Cryogenic Materials Database, OFHC copper curve fit (4–300 K; 10% error below 15 K, 5% above).</li>
       <li><b>Hydrogen enthalpy:</b> NIST via CoolProp. From saturated liquid at 20.4 K to gas at 300 K, 1 bar: about 3,958 kJ/kg.</li>
       <li><b>Not modelled:</b> stainless or other pipe materials, supply and exhaust plena, vapour blow-off dynamics, two-phase flow and chill-down, insulation heat leak, and any pressure drop or temperature gradient along the line. The NBS study found pressure drop and friction to be the biggest sources of uncertainty, which this page does not model.</li>
@@ -145,6 +152,20 @@
     return { mCu: mCu, Q: Q, kg: kg, litres: litres, min: secs / 60, ideal: Q / DH_H2 };
   }
 
+  // NBS 9264 (Brennan et al., 1967), Fig. 8: hydrogen cooldown time for the 61 m, 15.9 mm bore copper line,
+  // read from the figure (about ±5 s). Time = low-temperature knee at 60.4 m from the supply dewar.
+  var NBS_CURVE = [[2.5, 145], [4.2, 82], [5.9, 56], [7.6, 45], [11.1, 33]];
+  function nbsTime(atm) {
+    if (atm <= NBS_CURVE[0][0]) return NBS_CURVE[0][1];
+    for (var i = 1; i < NBS_CURVE.length; i++) {
+      if (atm <= NBS_CURVE[i][0]) {
+        var f = (atm - NBS_CURVE[i - 1][0]) / (NBS_CURVE[i][0] - NBS_CURVE[i - 1][0]);
+        return NBS_CURVE[i - 1][1] + f * (NBS_CURVE[i][1] - NBS_CURVE[i - 1][1]);
+      }
+    }
+    return NBS_CURVE[NBS_CURVE.length - 1][1];
+  }
+
   function bar(id, label, val, max, text, cls) {
     return '<div class="bar-row"><span>' + label + '</span><div class="track"><div class="fill ' + (cls || '') +
       '" style="width:' + Math.min(100, val / max * 100).toFixed(1) + '%"></div></div><span class="num">' + text + '</span></div>';
@@ -158,10 +179,14 @@
     $('oOD').textContent = OD.toFixed(1) + ' mm';
     $('oFlow').textContent = flow + ' g/s';
     $('oUtil').textContent = Math.round(util * 100) + '%';
+    var drv = parseFloat($('drv').value);
+    $('oDrv').textContent = drv.toFixed(1) + ' atm';
+    var sameLine = Math.abs(Lm - 61) < 0.5 && Math.abs(ID - 15.9) < 0.05;
+    $('kNBS').textContent = sameLine ? nbsTime(drv).toFixed(0) : 'n/a';
 
     var r = calc(Lm, ID, OD, flow, util);
     if (!r) {
-      $('kLiq').textContent = '–'; $('kKg').textContent = '–'; $('kTime').textContent = '–';
+      $('kLiq').textContent = '–'; $('kKg').textContent = '–'; $('kTime').textContent = '–'; $('kNBS').textContent = '–';
       $('bars').innerHTML = ''; $('rows').innerHTML = '<tr><td colspan="2" class="flag">Outer diameter must be larger than the bore.</td></tr>';
       return;
     }
@@ -184,7 +209,7 @@
       '<tr><td>Liquid hydrogen used at this utilisation</td><td class="r">' + r.kg.toFixed(2) + ' kg</td></tr>';
   }
 
-  ['L', 'ID', 'OD', 'flow', 'util'].forEach(function (id) { $(id).addEventListener('input', sync); });
+  ['L', 'ID', 'OD', 'flow', 'util', 'drv'].forEach(function (id) { $(id).addEventListener('input', sync); });
   sync();
 })();
 </script>

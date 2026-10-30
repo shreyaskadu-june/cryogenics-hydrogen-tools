@@ -12,3 +12,6 @@ Interactive pages on cryogenic hydrogen. Each page is self-contained; the data i
 - `h2_cryo_props.json`: generated from NIST Standard Reference Database 12 via CoolProp (version in the file).
 
 Status: prototypes, not yet checked against a second source. Known gaps are listed on each page under "Not modelled".
+
+## Sources added
+- NBS Report 9264 (Brennan et al., 1967, NASA copy): hydrogen cooldown time vs driving pressure for the 61 m copper line (Figure 8, read from the figure, about ±5 s). Used as a reference on `cooldown/`.
