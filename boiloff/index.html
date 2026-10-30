@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquid Hydrogen Boil-off Explorer</title>
+<style>
+  :root { --bg:#140e0b; --panel:#21170f; --line:#3d2c1d; --ink:#fbeee2; --muted:#c3a58a; --accent:#ff8a3d; --accent2:#ffd27a; --warn:#ff6b5b; color-scheme: dark; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg:#fbf4ee; --panel:#ffffff; --line:#e6d4c3; --ink:#2a1608; --muted:#7a5a40; --accent:#c4520f; --accent2:#9a6b00; --warn:#b3261e; color-scheme: light; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px 16px 48px; }
+  .tag { font:600 12px/1 ui-monospace,Menlo,monospace; color:var(--accent); text-transform:uppercase; letter-spacing:.12em; }
+  h1 { font-size:26px; margin:6px 0; }
+  .lede { color:var(--muted); max-width:72ch; margin:0 0 16px; }
+  .grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+  @media (min-width:860px){ .grid{ grid-template-columns:minmax(0,340px) minmax(0,1fr);} }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; min-width:0; }
+  .card h2 { font-size:13px; margin:0 0 10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .ctrl { margin:12px 0; }
+  .ctrl label { display:flex; justify-content:space-between; font-size:14px; }
+  .ctrl output { font:500 14px ui-monospace,Menlo,monospace; color:var(--accent); }
+  input[type=range] { width:100%; accent-color:var(--accent); cursor:pointer; }
+  .src { font-size:12px; color:var(--muted); margin:2px 0 0; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+  .kpi { border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .kpi b { display:block; font:600 22px ui-monospace,Menlo,monospace; color:var(--accent); }
+  .kpi span { font-size:12px; color:var(--muted); }
+  svg { width:100%; height:auto; display:block; }
+  .axis { stroke:var(--line); }
+  .tick { fill:var(--muted); font:11px ui-monospace,Menlo,monospace; }
+  .lab { fill:var(--muted); font:12px system-ui,sans-serif; }
+  .curve { fill:none; stroke:var(--accent); stroke-width:2.2; }
+  .curve2 { fill:none; stroke:var(--accent2); stroke-width:1.6; stroke-dasharray:5 4; }
+  .note { font-size:13px; color:var(--muted); }
+  .flag { color:var(--warn); font-size:13px; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); }
+  th { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  td.r { text-align:right; font-family:ui-monospace,Menlo,monospace; }
+  button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  details { margin-top:14px; }
+  summary { cursor:pointer; color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">Cryogenics · liquid hydrogen · boil-off</div>
+    <h1>How fast does a liquid hydrogen tank lose its contents?</h1>
+    <p class="lede">Set the tank size, how full it is, how well it is insulated and the outside temperature. The page works out the heat leaking in, the hydrogen that boils off each day, and how the liquid level falls over time. Boil-off is vented to the atmosphere, so the tank stays at about 1 bar.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-label="Inputs">
+      <h2>Tank</h2>
+      <div class="ctrl">
+        <label for="V">Tank volume <output id="oV"></output></label>
+        <input type="range" id="V" min="1" max="100" step="0.1" value="4.96">
+        <p class="src">Default is the 175 ft³ (4.96 m³) tank in the NASA 1991 test.</p>
+      </div>
+      <div class="ctrl">
+        <label for="fill">Liquid fill <output id="oFill"></output></label>
+        <input type="range" id="fill" min="10" max="100" step="1" value="90">
+      </div>
+      <h2 style="margin-top:18px">Insulation and outside</h2>
+      <div class="ctrl">
+        <label for="ins">Insulation (× NASA 1991 multilayer test) <output id="oIns"></output></label>
+        <input type="range" id="ins" min="0.2" max="3" step="0.05" value="1">
+        <p class="src">1.0 matches the NASA multilayer insulation test. Below 1 assumes better insulation; above 1 assumes worse.</p>
+      </div>
+      <div class="ctrl">
+        <label for="Tw">Outside (warm) temperature <output id="oTw"></output></label>
+        <input type="range" id="Tw" min="84" max="350" step="1" value="294">
+        <p class="src">Limits follow the NASA test range (152 °R to 630 °R).</p>
+      </div>
+      <p class="note">Model: heat leak per m² of tank surface, taken from the three NASA test points and interpolated; area scales with volume to the two-thirds power (similar shape). Boil-off = heat leak ÷ latent heat of 448.7 kJ/kg at 20.4 K.</p>
+    </section>
+
+    <section class="card" aria-label="Results">
+      <div class="kpis">
+        <div class="kpi"><b id="kPct">–</b><span>Boil-off, % of liquid per day</span></div>
+        <div class="kpi"><b id="kKg">–</b><span>Boil-off, kg per day</span></div>
+        <div class="kpi"><b id="kQ">–</b><span>Heat leak, W</span></div>
+        <div class="kpi"><b id="kT10">–</b><span>Days until 10% lost</span></div>
+      </div>
+      <h2 style="font-size:13px;margin:6px 0;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Liquid left over time</h2>
+      <svg id="chart" viewBox="0 0 640 240" role="img" aria-label="Liquid hydrogen mass against days"></svg>
+      <p class="note" style="margin-top:6px">Solid line: liquid mass remaining (% of starting liquid). Dashed line: the same tank at the NASA reference condition for comparison.</p>
+
+      <details open>
+        <summary>Check against the NASA 1991 test</summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Outside temp</th><th class="r">Heat in (model, W)</th><th class="r">Heat in (NASA, W)</th><th class="r">Loss %/day (model, full tank)</th><th class="r">Loss %/day (NASA)</th></tr></thead>
+            <tbody id="check"></tbody>
+          </table>
+        </div>
+        <p class="note">Heat input matches NASA at the three test points by construction, so this table checks the scaling only. At 294 K and 350 K the model's loss percentage is 14–18% higher than NASA's reported figure, which uses a basis NASA does not state. At 84 K NASA's 0.2% is rounded to one decimal, so the gap there is within rounding. The page reports the model's own figure and does not adjust it to match.</p>
+      </details>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px" aria-label="Sources and limits">
+    <h2>Sources, method and limits</h2>
+    <ul class="note">
+      <li><b>Heat leak and loss:</b> Stochl and Knoll, "Thermal Performance of a Liquid Hydrogen Tank Multilayer Insulation System at Warm Boundary Temperatures of 630, 530 and 152 °R", NASA TM 104476 (AIAA-91-2400, 1991). Tank 175 ft³, aluminium, 34 layers of MLI at about 4×10⁻⁶ torr. Heat inputs 164.4, 95.8 and 15.9 BTU/hr (48.2, 28.1, 4.7 kW converted at 1 BTU/hr = 0.29307 W).</li>
+      <li><b>Latent heat and liquid density:</b> NIST Standard Reference Database 12 via CoolProp: 448.7 kJ/kg and 70.85 kg/m³ at 1 bar saturation (20.37 K).</li>
+      <li><b>Tank geometry:</b> the NASA tank is an oblate spheroid, 87.6 in equatorial and 73.0 in polar diameter. Surface area 13.9 m² (computed).</li>
+      <li><b>Not modelled:</b> pressure rise in a sealed tank, relief valves, sloshing, liquid heating and ortho-para conversion, the heat leak through supports and piping of a real plant, and insulation that has aged or been damaged. The 1991 MLI data is a single test, and modern insulation may differ.</li>
+      <li><b>Uncertainty:</b> the NASA test is for one tank. The page does not add an uncertainty band; treat the outputs as a screening estimate within roughly ±20%, based on the 14–18% gap in the check table.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  // NASA 1991 test tank: total heat input per m² of surface at each outside temperature
+  var AREA_REF = 13.857;            // m², oblate spheroid from 87.6 x 73.0 in
+  var V_REF = 4.955;                // m³, 175 ft³
+  var HFG = 448.7;                  // kJ/kg, saturated hydrogen at 1 bar
+  var RHO = 70.85;                  // kg/m³, saturated liquid at 1 bar
+  var NASA = [
+    { T: 84.4,  Q: 4.66,  pct: 0.2, label: '152 °R' },
+    { T: 294.4, Q: 28.08, pct: 1.3, label: '530 °R' },
+    { T: 350.0, Q: 48.18, pct: 2.3, label: '630 °R' }
+  ];
+  var QA = NASA.map(function (n) { return { T: n.T, q: n.Q / AREA_REF }; }); // W/m² (n.Q is in W)
+
+  function qPerArea(T) {
+    if (T <= QA[0].T) return QA[0].q * Math.max(0, T) / QA[0].T;   // linear toward zero below the lowest test point
+    for (var i = 1; i < QA.length; i++) {
+      if (T <= QA[i].T) {
+        var f = (T - QA[i - 1].T) / (QA[i].T - QA[i - 1].T);
+        return QA[i - 1].q + f * (QA[i].q - QA[i - 1].q);
+      }
+    }
+    return QA[QA.length - 1].q;
+  }
+
+  function run(V, fill, ins, Tw) {
+    var area = AREA_REF * Math.pow(V / V_REF, 2 / 3);
+    var Q = qPerArea(Tw) * area * ins;               // W
+    var M0 = V * fill * RHO;                          // kg liquid
+    var mdot = Q / (HFG * 1000) * 86400;              // kg/day boiled off
+    return { Q: Q, M0: M0, kgDay: mdot, pct: mdot / M0 * 100 };
+  }
+
+  function fmt1(n) { return n.toFixed(1); }
+
+  function plot(series) {
+    var svg = $('chart'), W = 640, H = 240, L = 52, R = 16, Tp = 14, B = 30;
+    var maxD = 60;
+    var x = function (d) { return L + d / maxD * (W - L - R); };
+    var y = function (p) { return Tp + (1 - p / 100) * (H - Tp - B); };
+    var s = '';
+    s += '<line class="axis" x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '"/>';
+    s += '<line class="axis" x1="' + L + '" y1="' + Tp + '" x2="' + L + '" y2="' + (H - B) + '"/>';
+    [0, 25, 50, 75, 100].forEach(function (p) {
+      s += '<text class="tick" x="' + (L - 6) + '" y="' + (y(p) + 4) + '" text-anchor="end">' + p + '%</text>';
+      s += '<line class="axis" x1="' + L + '" y1="' + y(p) + '" x2="' + (W - R) + '" y2="' + y(p) + '" opacity=".35"/>';
+    });
+    [0, 15, 30, 45, 60].forEach(function (d) {
+      s += '<text class="tick" x="' + x(d) + '" y="' + (H - 10) + '" text-anchor="middle">' + d + ' d</text>';
+    });
+    function path(pts) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + x(p.d).toFixed(1) + ',' + y(p.p).toFixed(1); }).join(''); }
+    s += '<path class="curve2" d="' + path(series.ref) + '"/>';
+    s += '<path class="curve" d="' + path(series.main) + '"/>';
+    svg.innerHTML = s;
+  }
+
+  function sync() {
+    var V = parseFloat($('V').value), fill = parseFloat($('fill').value) / 100;
+    var ins = parseFloat($('ins').value), Tw = parseFloat($('Tw').value);
+    $('oV').textContent = V.toFixed(2) + ' m³';
+    $('oFill').textContent = Math.round(fill * 100) + '%';
+    $('oIns').textContent = '×' + ins.toFixed(2);
+    $('oTw').textContent = Tw + ' K';
+
+    var r = run(V, fill, ins, Tw);
+    $('kPct').textContent = r.pct.toFixed(2) + '%';
+    $('kKg').textContent = r.kgDay.toFixed(1);
+    $('kQ').textContent = r.Q.toFixed(1);
+    var days10 = r.pct > 0 ? 10 / r.pct : Infinity;
+    $('kT10').textContent = isFinite(days10) ? days10.toFixed(0) : '–';
+
+    // Liquid remaining over time (vented; boil-off leaves, so the liquid falls linearly)
+    var main = [], ref = [];
+    var rr = run(4.955, 0.9, 1, 294.4);
+    for (var d = 0; d <= 60; d += 1) {
+      main.push({ d: d, p: Math.max(0, 100 - r.pct * d) });
+      ref.push({ d: d, p: Math.max(0, 100 - rr.pct * d) });
+    }
+    plot({ main: main, ref: ref });
+
+    // Check table: NASA points, with the model at a full 175 ft³ tank
+    var rows = '';
+    NASA.forEach(function (n) {
+      var m = run(V_REF, 1, 1, n.T);
+      rows += '<tr><td>' + n.label + ' (' + n.T.toFixed(0) + ' K)</td>' +
+        '<td class="r">' + m.Q.toFixed(1) + '</td>' +
+        '<td class="r">' + n.Q.toFixed(1) + '</td>' +
+        '<td class="r">' + m.pct.toFixed(2) + '</td>' +
+        '<td class="r">' + n.pct.toFixed(1) + '</td></tr>';
+    });
+    $('check').innerHTML = rows;
+  }
+
+  ['V', 'fill', 'ins', 'Tw'].forEach(function (id) { $(id).addEventListener('input', sync); });
+  sync();
+})();
+</script>
+</body>
+</html>
