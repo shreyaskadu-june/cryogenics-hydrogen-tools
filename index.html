@@ -51,10 +51,19 @@
   th { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
   td.r { text-align:right; font-family:ui-monospace,Menlo,monospace; }
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+  nav.tools { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+  nav.tools a { font:500 13px system-ui,sans-serif; padding:7px 12px; border:1px solid var(--line); border-radius:999px; color:var(--accent); text-decoration:none; }
+  nav.tools a:hover, nav.tools a:focus-visible { background:var(--panel); }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="tools" aria-label="Tools in this set">
+    <a href="./">Phase explorer</a>
+    <a href="boiloff/">Boil-off</a>
+    <a href="cooldown/">Line cooldown</a>
+    <a href="liquefaction/">Liquefaction energy</a>
+  </nav>
   <header>
     <div class="tag">Cryogenics · liquid hydrogen · property explorer</div>
     <h1>How hydrogen's properties change from liquid to gas</h1>

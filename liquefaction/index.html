@@ -44,10 +44,20 @@
   .table-wrap { overflow-x:auto; }
   button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   @media (prefers-reduced-motion: reduce) { .fill { transition:none; } }
+  nav.tools { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+  nav.tools a { font:500 13px system-ui,sans-serif; padding:7px 12px; border:1px solid var(--line); border-radius:999px; color:var(--accent); text-decoration:none; }
+  nav.tools a:hover, nav.tools a:focus-visible { background:var(--panel); }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="tools" aria-label="Tools in this set">
+    <a href="../">← All tools</a>
+    <a href="../">Phase explorer</a>
+    <a href="../boiloff/">Boil-off</a>
+    <a href="../cooldown/">Line cooldown</a>
+    <a href="../liquefaction/">Liquefaction energy</a>
+  </nav>
   <header>
     <div class="tag">Cryogenics · liquid hydrogen · liquefaction</div>
     <h1>How much energy does it take to liquefy hydrogen?</h1>
